@@ -2,65 +2,64 @@
 //  ContentView.swift
 //  Whatch
 //
-//  Created by 박세진 on 7/5/25.
-//
 
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isPresented = false
-    @AppStorage("selectedFeature") var selectedFeature: Feature?
-    
+    @Environment(AppModel.self) private var model
+    @AppStorage("selectedFeature") private var selectedFeature: Feature?
+    @State private var isPickerPresented = false
+
     var body: some View {
         NavigationStack {
-            VStack {
-                if let feature = selectedFeature {
-                    switch feature {
-                    case .pingTest:
-                        PingTestContentView()
-                    case .flashlight:
-                        FlashLightContentView()
-                    case .hapticController:
-                        HapticControllerContentView()
-                    case .headingMonitor:
-                        HeadingMonitorContentView()
-                    case .batteryStatus:
-                        BatteryStatusContentView()
-                    default:
-                        ContentUnavailableView(label: {
-                            Label("선택되지 않음", systemImage: "questionmark")
-                        })
-                    }
+            Group {
+                if let selectedFeature {
+                    featureView(for: selectedFeature)
                 } else {
-                    ContentUnavailableView(label: {
-                        Label("선택되지 않음", systemImage: "questionmark")
-                    })
+                    NoFeatureSelectedView()
                 }
-                
             }
+            .navigationTitle(selectedFeature?.title ?? "")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        isPresented = true
-                    } label: {
-                        Label("app", systemImage: "list.bullet")
+                    Button("앱 목록", systemImage: "list.bullet") {
+                        isPickerPresented = true
                     }
                 }
             }
-            .navigationTitle(selectedFeature != nil ? selectedFeature!.description : "")
-            .sheet(isPresented: $isPresented) {
-                AppSelector(selectedFeature: $selectedFeature)
+            .sheet(isPresented: $isPickerPresented) {
+                FeaturePicker(selection: $selectedFeature)
                     .presentationDetents([.medium])
             }
             .onAppear {
                 if selectedFeature == nil {
-                    isPresented = true
+                    isPickerPresented = true
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func featureView(for feature: Feature) -> some View {
+        switch feature {
+        case .pingTest:
+            PingTestContentView(monitor: model.ping)
+        case .flashlight:
+            FlashlightContentView()
+        case .hapticController:
+            HapticControllerContentView()
+        case .headingMonitor:
+            HeadingMonitorContentView(monitor: model.heading)
+        case .batteryStatus:
+            BatteryStatusContentView(monitor: model.battery)
+        case .accelerometer, .rollTrackerX, .rollTrackerY, .vibrationDetector, .watchBoard:
+            // Watch-only features; a stale selection from an old install lands here.
+            NoFeatureSelectedView()
         }
     }
 }
 
 #Preview {
     ContentView()
+        .environment(AppModel())
 }

@@ -63,6 +63,11 @@
 			path = "Whatch Watch App";
 			sourceTree = "<group>";
 		};
+		EFA0C0DE5A4E0000000000A1 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +93,7 @@
 			children = (
 				EF9B64D02E18F687007F133C /* Whatch */,
 				EF9B64E22E18F689007F133C /* Whatch Watch App */,
+				EFA0C0DE5A4E0000000000A1 /* Shared */,
 				EF9B64CF2E18F687007F133C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -120,6 +126,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				EF9B64D02E18F687007F133C /* Whatch */,
+				EFA0C0DE5A4E0000000000A1 /* Shared */,
 			);
 			name = Whatch;
 			packageProductDependencies = (
@@ -142,6 +149,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				EF9B64E22E18F689007F133C /* Whatch Watch App */,
+				EFA0C0DE5A4E0000000000A1 /* Shared */,
 			);
 			name = "Whatch Watch App";
 			packageProductDependencies = (
@@ -358,6 +366,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Whatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Whatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "진북 기준 방향(헤딩)을 계산하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.pinocchio.Whatch;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -389,6 +398,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Whatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Whatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "진북 기준 방향(헤딩)을 계산하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.pinocchio.Whatch;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -421,6 +431,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Whatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Whatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "진북 기준 방향(헤딩)을 계산하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +465,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Whatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Whatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "진북 기준 방향(헤딩)을 계산하기 위해 위치 권한이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

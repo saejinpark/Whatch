@@ -39,6 +39,21 @@ It was originally created out of curiosity and is now shared as an open-source p
 
 ---
 
+## 🏗 Project Structure
+
+The Xcode project has two targets that share one folder of code:
+
+- `Shared/` — compiled into both apps.
+  - `Connectivity/` — `ConnectivitySession` (the single `WCSession` owner), the typed `WatchMessage` enum and `PingMonitor`.
+  - `Features/` — the `Feature` list, status models and the monitors that run on both devices (battery, heading).
+  - `UI/` — `LockUp`, `StatusButton`, `FeaturePicker` and other reusable views.
+- `Whatch/` — iPhone app. `AppModel` wires the services together; `FlashlightController` and `HapticController` act on Watch requests.
+- `Whatch Watch App/` — Watch app. `AppModel` plus the Watch-only features (accelerometer, rotation tracker, vibration detector, Watch Board) and `RemoteSwitch`, which mirrors a phone-side toggle.
+
+State is modelled with `@Observable` classes and injected through the SwiftUI environment; messages between the devices are always a `WatchMessage` case, never a raw dictionary.
+
+---
+
 ## 🔐 Privacy & Contact
 
 This app does **not collect, store, or transmit any personal data**.  
