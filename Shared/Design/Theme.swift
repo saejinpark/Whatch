@@ -114,3 +114,41 @@ extension VibrationAnalyzer.Level {
         }
     }
 }
+
+// MARK: - Building blocks
+
+/// A rounded card on the iPhone. On the Watch the tinted screen already frames the content.
+private struct CardModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(watchOS)
+        content
+        #else
+        content
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(Color.card, in: RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+        #endif
+    }
+}
+
+extension View {
+    func card() -> some View {
+        modifier(CardModifier())
+    }
+}
+
+/// A small capsule label in a tint.
+struct Pill: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.14), in: Capsule())
+            .lineLimit(1)
+    }
+}

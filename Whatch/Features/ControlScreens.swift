@@ -13,9 +13,7 @@ struct FlashlightScreen: View {
         @Bindable var flashlight = model.flashlight
         let tint = Feature.flashlight.tint
 
-        VStack(spacing: 20) {
-            Spacer(minLength: 0)
-
+        VStack(spacing: 24) {
             PowerButton(isOn: flashlight.isOn,
                         systemImage: flashlight.isOn ? "flashlight.on.fill" : "flashlight.off.fill",
                         tint: tint) {
@@ -28,13 +26,16 @@ struct FlashlightScreen: View {
             Text(flashlight.isOn ? "켜짐" : "꺼짐")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(flashlight.isOn ? tint : .secondary)
-
-            Spacer(minLength: 0)
+                .padding(.bottom, 8)
 
             SettingsCard {
-                ActivationModePicker(selection: $flashlight.mode)
-                LevelSlider(title: "밝기", value: $flashlight.brightness, range: TorchLevel.minimumBrightness...1,
-                            minimumImage: "sun.min", maximumImage: "sun.max.fill", tint: tint)
+                SettingRow(title: "동작 방식") {
+                    ActivationModePicker(selection: $flashlight.mode)
+                }
+                SettingRow(title: "밝기") {
+                    LevelSlider(value: $flashlight.brightness, range: TorchLevel.minimumBrightness...1,
+                                minimumImage: "sun.min", maximumImage: "sun.max.fill", tint: tint)
+                }
             }
 
             WatchRemoteNote(link: model.link)
@@ -50,9 +51,7 @@ struct HapticScreen: View {
         @Bindable var haptic = model.haptic
         let tint = Feature.haptic.tint
 
-        VStack(spacing: 20) {
-            Spacer(minLength: 0)
-
+        VStack(spacing: 24) {
             PowerButton(isOn: haptic.isPlaying,
                         systemImage: haptic.isPlaying ? "iphone.radiowaves.left.and.right" : "iphone",
                         tint: tint) {
@@ -65,13 +64,16 @@ struct HapticScreen: View {
             Text(haptic.isPlaying ? "진동 중" : "꺼짐")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(haptic.isPlaying ? tint : .secondary)
-
-            Spacer(minLength: 0)
+                .padding(.bottom, 8)
 
             SettingsCard {
-                ActivationModePicker(selection: $haptic.mode)
-                LevelSlider(title: "세기", value: $haptic.intensity, range: 0.2...1,
-                            minimumImage: "speaker.wave.1", maximumImage: "speaker.wave.3.fill", tint: tint)
+                SettingRow(title: "동작 방식") {
+                    ActivationModePicker(selection: $haptic.mode)
+                }
+                SettingRow(title: "세기") {
+                    LevelSlider(value: $haptic.intensity, range: 0.2...1,
+                                minimumImage: "speaker.wave.1", maximumImage: "speaker.wave.3.fill", tint: tint)
+                }
             }
 
             WatchRemoteNote(link: model.link)
@@ -85,11 +87,26 @@ private struct SettingsCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             content
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.card, in: RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+    }
+}
+
+private struct SettingRow<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+            content
+        }
     }
 }
 
@@ -107,7 +124,6 @@ private struct ActivationModePicker: View {
 }
 
 private struct LevelSlider: View {
-    let title: String
     @Binding var value: Double
     let range: ClosedRange<Double>
     let minimumImage: String
@@ -116,7 +132,7 @@ private struct LevelSlider: View {
 
     var body: some View {
         Slider(value: $value, in: range) {
-            Text(title)
+            EmptyView()
         } minimumValueLabel: {
             Image(systemName: minimumImage).foregroundStyle(.secondary)
         } maximumValueLabel: {

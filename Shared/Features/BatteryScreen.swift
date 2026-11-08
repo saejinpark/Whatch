@@ -15,6 +15,7 @@ struct BatteryScreen: View {
                 BatteryGauge(name: Device.shortName, symbol: Device.symbol, reading: model.battery.reading)
                 BatteryGauge(name: Device.counterpartShortName, symbol: Device.counterpartSymbol, reading: model.remoteBattery)
             }
+            .card()
             if model.remoteBattery.level == nil {
                 LinkAdvice(text: model.link.advice ?? "\(Device.counterpartName) 배터리를 기다리는 중")
             }

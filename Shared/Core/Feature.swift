@@ -63,9 +63,9 @@ enum Feature: String, CaseIterable, Identifiable, Sendable {
     var detail: String {
         switch self {
         case .impact: "팔을 힘껏 내질러 보세요"
-        case .rotation: "손목을 돌린 각도를 누적해요"
-        case .vibration: "손목의 떨림을 그래프로"
-        case .board: "크라운과 손가락으로 그리기"
+        case .rotation: "손목 회전 각도 누적"
+        case .vibration: "손목 떨림을 그래프로"
+        case .board: "손가락과 크라운으로 그리기"
         case .ping: "두 기기 사이의 응답 속도"
         case .flashlight: "워치로 아이폰 손전등 켜기"
         case .haptic: "워치로 아이폰 진동 울리기"

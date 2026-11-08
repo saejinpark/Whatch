@@ -13,6 +13,7 @@ struct PingScreen: View {
         let tracker = monitor.tracker
 
         VStack(spacing: Layout.spacing) {
+        VStack(spacing: Layout.spacing) {
             VStack(spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(tracker.latency.map(Self.milliseconds) ?? "--")
@@ -30,9 +31,18 @@ struct PingScreen: View {
             }
             .accessibilityElement(children: .combine)
 
-            Sparkline(values: tracker.samples.map { $0 * 1000 }, tint: Feature.ping.tint)
-                .frame(minHeight: 24, maxHeight: Layout.chartHeight)
+            // The chart appears once there is something to draw.
+            if tracker.samples.count > 1 {
+                Sparkline(values: tracker.samples.map { $0 * 1000 }, tint: Feature.ping.tint)
+                    .frame(height: Layout.chartHeight)
+                    #if !os(watchOS)
+                    .padding(.top, 8)
+                    #endif
+            }
+        }
+        .card()
 
+        VStack(spacing: Layout.spacing) {
             HStack(spacing: Layout.spacing) {
                 StatTile(title: "평균", value: tracker.average.map(Self.milliseconds) ?? "--")
                 #if !os(watchOS)
@@ -42,6 +52,7 @@ struct PingScreen: View {
                 StatTile(title: "손실", value: "\(tracker.lostCount)",
                          tint: tracker.lostCount > 0 ? .red : .primary)
             }
+        }
         }
         .onAppear { monitor.start() }
         .onDisappear { monitor.stop() }

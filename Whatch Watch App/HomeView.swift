@@ -45,18 +45,19 @@ private struct FeatureRow: View {
     let feature: Feature
 
     var body: some View {
-        HStack(spacing: 10) {
-            FeatureIcon(feature: feature)
+        HStack(spacing: 9) {
+            FeatureIcon(feature: feature, size: 30)
             VStack(alignment: .leading, spacing: 1) {
                 Text(feature.title)
                     .font(.headline)
                 Text(feature.detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 1)
     }
 }
 

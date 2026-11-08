@@ -35,17 +35,37 @@ struct HeadingScreen: View {
             }
             .padding(.top, 8)
 
+            #if os(watchOS)
             Text(caption(mine: mine, theirs: theirs))
                 .font(Layout.footnoteFont)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+            #else
+            HStack(spacing: Layout.spacing) {
+                StatTile(title: "내 방향", value: mine.map { "\(Int($0.rounded()))° \(HeadingMath.cardinal(for: $0))" } ?? "--")
+                StatTile(title: "\(Device.counterpartShortName) 방향",
+                         value: theirs.map { "\(Int($0.rounded()))° \(HeadingMath.cardinal(for: $0))" } ?? "--",
+                         tint: theirs == nil ? .secondary : Feature.heading.tint)
+                StatTile(title: "차이", value: difference(mine: mine, theirs: theirs) ?? "--")
+            }
+            .padding(.top, 8)
+            if theirs == nil, let advice = model.link.advice {
+                LinkAdvice(text: advice)
+            }
+            #endif
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(caption(mine: mine, theirs: theirs))
         .onAppear { model.setHeadingVisible(true) }
         .onDisappear { model.setHeadingVisible(false) }
+    }
+
+    private func difference(mine: Double?, theirs: Double?) -> String? {
+        guard let mine, let theirs else { return nil }
+        let degrees = Int(HeadingMath.difference(from: mine, to: theirs).rounded())
+        return "\(degrees > 0 ? "+" : "")\(degrees)°"
     }
 
     private func caption(mine: Double?, theirs: Double?) -> String {
