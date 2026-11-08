@@ -7,50 +7,61 @@ It was originally created out of curiosity and is now shared as an open-source p
 
 ## 🧪 Features
 
-- **Accelerometer**  
-  Measures motion and acceleration.
+**On the Watch alone**
 
-- **Roll Tracker X**  
-  Tracks horizontal wrist rotation (x-axis).
+- **Accelerometer** — a ring gauge of the current G-force, with your best swing and swing count.
+- **Rotation Tracker** — adds up how far you turn your wrist, around either axis.
+- **Vibration Detector** — a live trace of how much your wrist is shaking.
+- **Watch Board** — a pixel canvas you draw on with a finger or steer with the Digital Crown.
 
-- **Roll Tracker Y**  
-  Tracks vertical wrist rotation (y-axis).
+**With the iPhone**
 
-- **Vibration Detector**  
-  Detects shaking or sudden movement.
+- **Ping Test** — round-trip time between the two apps, with a history chart.
+- **Flashlight** — switch the iPhone torch from the Watch; brightness and hold/toggle on the phone.
+- **Haptic Controller** — start and stop the iPhone vibration from the Watch.
+- **Heading Monitor** — a compass showing where the other device points.
+- **Battery** — both battery levels side by side.
 
-- **Watch Board**  
-  Draw with the Digital Crown.
-
-- **Ping Test**  
-  Measures ping between iPhone and Apple Watch.
-
-- **Flashlight Control**  
-  Turn your iPhone flashlight on/off from the Watch.
-
-- **Haptic Controller**  
-  Start or stop vibration from the Watch with press or toggle modes.
-
-- **Heading Monitor**  
-  Compare Watch heading and iPhone heading in real-time.
-
-- **Battery Status**  
-  Displays battery levels of both devices.
+The torch and the vibration motor only work while the iPhone app is on screen (an iOS rule).
+When something cannot work, the app says why instead of failing silently.
 
 ---
 
 ## 🏗 Project Structure
 
-The Xcode project has two targets that share one folder of code:
+Two app targets share one folder of code:
 
-- `Shared/` — compiled into both apps.
-  - `Connectivity/` — `ConnectivitySession` (the single `WCSession` owner), the typed `WatchMessage` enum and `PingMonitor`.
-  - `Features/` — the `Feature` list, status models and the monitors that run on both devices (battery, heading).
-  - `UI/` — `LockUp`, `StatusButton`, `FeaturePicker` and other reusable views.
-- `Whatch/` — iPhone app. `AppModel` wires the services together; `FlashlightController` and `HapticController` act on Watch requests.
-- `Whatch Watch App/` — Watch app. `AppModel` plus the Watch-only features (accelerometer, rotation tracker, vibration detector, Watch Board) and `RemoteSwitch`, which mirrors a phone-side toggle.
+- `Shared/Core/` — pure logic with no UI or device access: the message format, ping bookkeeping, rotation and impact maths, the board, compass arithmetic. Unit-tested.
+- `Shared/Connectivity/` — `ConnectivitySession`, the single owner of `WCSession`, and `PingMonitor`.
+- `Shared/Services/` — battery and compass monitors.
+- `Shared/App/` — `AppModel`, which keeps the two devices in sync, and the on-device `SelfTest`.
+- `Shared/Design/`, `Shared/Features/` — the design system and the screens both apps use.
+- `Whatch/` — iPhone app: dashboard, torch and haptic controllers.
+- `Whatch Watch App/` — Watch app: feature list and the Watch-only screens.
 
-State is modelled with `@Observable` classes and injected through the SwiftUI environment; messages between the devices are always a `WatchMessage` case, never a raw dictionary.
+Each device broadcasts a `DeviceState` snapshot when it changes and stores it for the other to find later, so
+a screen can show the last known value even when the other app is closed. High-rate data (the compass) is only
+streamed while the other device has the heading screen open.
+
+---
+
+## ✅ Testing
+
+Unit tests for `Shared/Core` run on a Mac, without a simulator:
+
+```bash
+swift test
+```
+
+Hardware and the live connection are checked by a self-test built into both apps. Launch either app with
+`-selfTest` and it prints one `SELFTEST PASS/FAIL/SKIP` line per check (battery, compass, connection, ping,
+state exchange, torch, haptics, motion sensors):
+
+```bash
+xcrun devicectl device process launch --console --device <device id> -- dev.pinocchio.Whatch -selfTest
+```
+
+Launching with `-openFeature <id>` (for example `-openFeature ping`) opens that feature directly.
 
 ---
 

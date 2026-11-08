@@ -12,13 +12,18 @@ struct WhatchApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
                 .environment(model)
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     switch phase {
-                    case .active: model.start()
-                    case .background: model.stop()
+                    case .active: model.activate()
+                    case .background: model.deactivate()
                     default: break
+                    }
+                }
+                .task {
+                    if SelfTest.isRequested {
+                        await SelfTest.run(model: model)
                     }
                 }
         }
