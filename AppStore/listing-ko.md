@@ -49,7 +49,7 @@ https://github.com/saejinpark/Whatch/blob/main/PRIVACY.md
 4+ (모든 항목 "없음")
 
 ## 저작권
-2026 Saejin Park
+dev.pinocchio
 
 ## 앱 개인정보 보호 (App Privacy)
 "데이터를 수집하지 않음"
@@ -63,3 +63,8 @@ To test the paired features, install the app on both an iPhone and its paired Ap
 - The Watch-only features (accelerometer, rotation tracker, vibration detector, Watch Board) work on the Watch alone.
 
 The camera usage string covers the torch only; the app never captures photos or video.
+
+## 제품 페이지 아트워크
+- 헤더 (3840 × 1646): `AppStore/artwork/header-3840x1646.png`
+- 검색 결과 (1920 × 1280): `AppStore/artwork/search-1920x1280.png`
+- 다시 만들기: `swift Design/StoreArt.swift "$PWD" "$PWD/AppStore/artwork"`
