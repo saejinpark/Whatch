@@ -12,7 +12,7 @@ func rr(_ x: Double, _ y: Double, _ w: Double, _ h: Double, _ r: Double) -> CGPa
 }
 let navy: UInt32 = 0x16215A, teal: UInt32 = 0x2ED3C0, mint: UInt32 = 0xA7F4EA, tealDeep: UInt32 = 0x1BAE9E
 let ctx = CGContext(data: nil, width: Int(size), height: Int(size), bitsPerComponent: 8, bytesPerRow: 0,
-                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
 ctx.setFillColor(rgb(navy)); ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
 
 // The question mark.

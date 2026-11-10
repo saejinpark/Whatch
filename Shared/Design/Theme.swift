@@ -60,7 +60,7 @@ extension Feature {
 extension LinkStatus {
     var tint: Color {
         switch self {
-        case .connecting: .secondary
+        case .unsupported, .connecting: .secondary
         case .connected: .green
         case .needsForeground: .orange
         case .notPaired, .appMissing, .unreachable: .red

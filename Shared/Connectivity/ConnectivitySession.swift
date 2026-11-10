@@ -18,6 +18,8 @@ import WatchConnectivity
 @MainActor
 @Observable
 final class ConnectivitySession: NSObject {
+    /// `false` on devices that cannot pair with a Watch, such as iPad.
+    let isSupported = WCSession.isSupported()
     private(set) var isActivated = false
     private(set) var isReachable = false
     /// iPhone only: whether a Watch is paired. Always `true` on the Watch.

@@ -47,6 +47,8 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Whatch")
@@ -95,7 +97,7 @@ private struct DevicesCard: View {
 
         VStack(spacing: 16) {
             HStack(alignment: .top, spacing: 0) {
-                DeviceColumn(symbol: "iphone", name: "iPhone", reading: model.battery.reading)
+                DeviceColumn(symbol: Device.symbol, name: Device.name, reading: model.battery.reading)
                 LinkIndicator(status: status)
                     .padding(.top, 22)
                 DeviceColumn(symbol: "applewatch", name: "Apple Watch", reading: model.remoteBattery)
@@ -254,6 +256,8 @@ private struct FeatureScreen: View {
         ScrollView {
             content
                 .padding(16)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
         .background(

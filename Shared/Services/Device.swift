@@ -20,9 +20,10 @@ enum Device {
     static let counterpartShortName = "아이폰"
     static let counterpartSymbol = "iphone"
     #else
-    static let name = "iPhone"
-    static let shortName = "아이폰"
-    static let symbol = "iphone"
+    @MainActor static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    @MainActor static var name: String { isPad ? "iPad" : "iPhone" }
+    @MainActor static var shortName: String { isPad ? "아이패드" : "아이폰" }
+    @MainActor static var symbol: String { isPad ? "ipad" : "iphone" }
     static let counterpartName = "Apple Watch"
     static let counterpartShortName = "워치"
     static let counterpartSymbol = "applewatch"

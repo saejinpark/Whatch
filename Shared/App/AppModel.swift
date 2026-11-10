@@ -94,6 +94,7 @@ final class AppModel {
     // MARK: Derived state
 
     var link: LinkStatus {
+        guard session.isSupported else { return .unsupported }
         guard session.isActivated else { return .connecting }
         guard session.isPaired else { return .notPaired }
         guard session.isCounterpartInstalled else { return .appMissing }

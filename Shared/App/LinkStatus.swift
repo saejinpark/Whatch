@@ -7,6 +7,8 @@ import Foundation
 
 /// Where the connection to the counterpart app stands, in terms the user can act on.
 enum LinkStatus: Equatable {
+    /// This device cannot pair with a Watch at all (iPad).
+    case unsupported
     case connecting
     /// iPhone only: no Watch is paired with this phone.
     case notPaired
@@ -24,6 +26,7 @@ enum LinkStatus: Equatable {
 
     var title: String {
         switch self {
+        case .unsupported: "워치 연결을 지원하지 않는 기기"
         case .connecting: "연결 확인 중"
         case .notPaired: "페어링된 워치 없음"
         case .appMissing: "\(Device.counterpartName)에 앱 없음"
@@ -38,6 +41,8 @@ enum LinkStatus: Equatable {
         switch self {
         case .connecting, .connected:
             nil
+        case .unsupported:
+            "Apple Watch 기능은 iPhone에서 사용할 수 있어요"
         case .notPaired:
             "Apple Watch를 페어링해 주세요"
         case .appMissing:
@@ -55,6 +60,7 @@ enum LinkStatus: Equatable {
 
     var systemImage: String {
         switch self {
+        case .unsupported: "applewatch.slash"
         case .connecting: "ellipsis.circle"
         case .connected: "checkmark.circle.fill"
         case .needsForeground: "exclamationmark.circle.fill"
