@@ -5,15 +5,6 @@
 
 import SwiftUI
 
-/// Colours of the Watch Board. Index zero is the eraser. Order is persisted, so only append.
-enum BoardPalette {
-    static let colors: [Color] = [.clear, .white, .red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink]
-
-    static func color(_ index: UInt8) -> Color {
-        colors.indices.contains(Int(index)) ? colors[Int(index)] : .clear
-    }
-}
-
 /// Which way the Digital Crown moves the cursor.
 enum BoardAxis {
     case horizontal
@@ -33,8 +24,10 @@ final class BoardStore {
         didSet { if isPenDown { paintCursor() } }
     }
 
+    /// Called with the saved board after every change, so it can be mirrored on the iPhone.
+    @ObservationIgnored var onChange: ((Data) -> Void)?
     @ObservationIgnored private var lastTouch: (row: Int, column: Int)?
-    private static let storageKey = "watchBoard.v2"
+    static let storageKey = "watchBoard.v2"
 
     init() {
         board = UserDefaults.standard.data(forKey: Self.storageKey).flatMap(Board.init(data:)) ?? Board()
@@ -92,12 +85,15 @@ final class BoardStore {
     }
 
     private func save() {
-        UserDefaults.standard.set(board.data, forKey: Self.storageKey)
+        let data = board.data
+        UserDefaults.standard.set(data, forKey: Self.storageKey)
+        onChange?(data)
     }
 }
 
 /// A pixel canvas: draw with a finger, or steer the cursor with the Digital Crown.
 struct BoardScreen: View {
+    @Environment(AppModel.self) private var model
     @State private var store = BoardStore()
     @State private var crown = 0.0
     @State private var isPalettePresented = false
@@ -175,6 +171,11 @@ struct BoardScreen: View {
         .sheet(isPresented: $isPalettePresented) {
             palette
         }
+        .onAppear {
+            store.onChange = { [model] data in
+                model.boardDidChange(data)
+            }
+        }
         .confirmationDialog("그림을 모두 지울까요?", isPresented: $isClearConfirmationPresented) {
             Button("지우기", role: .destructive) {
                 store.clear()
@@ -248,4 +249,5 @@ struct BoardScreen: View {
     NavigationStack {
         BoardScreen()
     }
+    .environment(AppModel())
 }

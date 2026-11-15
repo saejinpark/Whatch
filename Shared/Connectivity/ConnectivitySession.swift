@@ -51,6 +51,20 @@ final class ConnectivitySession: NSObject {
         return true
     }
 
+    /// Sends now and reports once the counterpart has received it, or that it could not be sent.
+    /// Streams use this to pace themselves: the next item goes out only when this one arrived.
+    func sendAcknowledged(_ message: WatchMessage, completion: @escaping @MainActor @Sendable (Bool) -> Void) {
+        guard let session, session.activationState == .activated, session.isReachable else {
+            completion(false)
+            return
+        }
+        session.sendMessage(message.payload, replyHandler: { _ in
+            Task { @MainActor in completion(true) }
+        }, errorHandler: { _ in
+            Task { @MainActor in completion(false) }
+        })
+    }
+
     /// Stores `state` for the counterpart to pick up, even if it is not running right now.
     func publish(_ state: DeviceState) {
         guard let session, session.activationState == .activated else { return }
@@ -133,6 +147,16 @@ extension ConnectivitySession: WCSessionDelegate {
         Task { @MainActor in
             self.receive(decoded, isLive: true)
         }
+    }
+
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        // The reply is only an acknowledgement; see `sendAcknowledged`.
+        replyHandler(["ok": true])
+        self.session(session, didReceiveMessage: message)
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {

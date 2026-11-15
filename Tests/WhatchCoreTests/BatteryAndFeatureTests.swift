@@ -36,6 +36,24 @@ final class FeatureTests: XCTestCase {
         XCTAssertEqual(Set(grouped), Set(Feature.allCases))
     }
 
+    func testEveryFeatureHasAScreenSomewhere() {
+        for feature in Feature.allCases {
+            XCTAssertTrue(feature.isAvailable(on: .watch) || feature.isAvailable(on: .phone), "\(feature)")
+        }
+    }
+
+    func testPlatformLists() {
+        // Watch-only features never show as screens on the phone, and the phone-side games
+        // are driven from the Watch's controller screen rather than having one of their own.
+        XCTAssertTrue(Feature.Group.watchOnly.features(on: .phone).isEmpty)
+        XCTAssertEqual(Feature.Group.watchOnly.features(on: .watch), [.impact, .rotation, .vibration, .board])
+        XCTAssertEqual(Feature.Group.play.features(on: .watch), [.controller, .duel])
+        XCTAssertEqual(Feature.Group.play.features(on: .phone), [.ballGame, .airPointer, .duel])
+        XCTAssertEqual(Feature.Group.remote.features(on: .phone), [.flashlight, .haptic, .buzz, .mirror])
+        XCTAssertFalse(Feature.Group.watchOnly.isPaired)
+        XCTAssertTrue(Feature.Group.measure.isPaired)
+    }
+
     func testMetadataIsFilledIn() {
         for feature in Feature.allCases {
             XCTAssertFalse(feature.title.isEmpty)

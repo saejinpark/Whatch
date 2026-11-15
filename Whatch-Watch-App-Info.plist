@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>워치와 아이폰 사이의 거리를 재기 위해 사용합니다.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>기압계로 워치와 아이폰의 높이 차이를 재기 위해 사용합니다.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>심박수를 읽어 아이폰 화면에 실시간으로 보여주기 위해 사용합니다.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>심박수를 실시간으로 측정하려면 운동 세션이 필요합니다. 운동 기록은 저장하지 않습니다.</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+</dict>
 </plist>

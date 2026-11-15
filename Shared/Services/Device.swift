@@ -18,6 +18,8 @@ enum Device {
     static let symbol = "applewatch"
     static let counterpartName = "iPhone"
     static let counterpartShortName = "아이폰"
+    /// The counterpart with its subject particle attached.
+    static let counterpartSubject = "아이폰이"
     static let counterpartSymbol = "iphone"
     #else
     @MainActor static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
@@ -26,6 +28,8 @@ enum Device {
     @MainActor static var symbol: String { isPad ? "ipad" : "iphone" }
     static let counterpartName = "Apple Watch"
     static let counterpartShortName = "워치"
+    /// The counterpart with its subject particle attached.
+    static let counterpartSubject = "워치가"
     static let counterpartSymbol = "applewatch"
     #endif
 

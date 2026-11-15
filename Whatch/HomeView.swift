@@ -11,7 +11,7 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var path: [Feature] = {
         let requested = UserDefaults.standard.string(forKey: "openFeature").flatMap(Feature.init(rawValue:))
-        return requested.flatMap { $0.group == .paired ? [$0] : nil } ?? []
+        return requested.flatMap { $0.isAvailable(on: .phone) ? [$0] : nil } ?? []
     }()
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -22,13 +22,15 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     DevicesCard(model: model)
 
-                    section(Feature.Group.paired.title) {
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(Feature.Group.paired.features) { feature in
-                                NavigationLink(value: feature) {
-                                    FeatureCard(feature: feature, status: status(for: feature))
+                    ForEach(Feature.Group.allCases.filter(\.isPaired)) { group in
+                        section(group.title) {
+                            LazyVGrid(columns: columns, spacing: 12) {
+                                ForEach(group.features(on: .phone)) { feature in
+                                    NavigationLink(value: feature) {
+                                        FeatureCard(feature: feature, status: status(for: feature))
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -56,6 +58,17 @@ struct HomeView: View {
                 FeatureScreen(feature: feature)
             }
         }
+        .onChange(of: model.pendingOpen, initial: true) { _, feature in
+            open(feature)
+        }
+    }
+
+    /// Shows a screen the Watch asked for.
+    private func open(_ feature: Feature?) {
+        guard let feature else { return }
+        model.pendingOpen = nil
+        guard feature.isAvailable(on: .phone), path.last != feature else { return }
+        path = [feature]
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
@@ -80,7 +93,28 @@ struct HomeView: View {
             return ("워치가 향한 방향", model.link.isConnected)
         case .battery:
             return ("워치 \(model.remoteBattery.percentText)", model.remoteBattery.level != nil)
-        case .impact, .rotation, .vibration, .board:
+        case .buzz:
+            return ("탭과 모스부호", model.link.isConnected)
+        case .mirror:
+            return model.mirroredBoard == nil ? ("워치 그림 보기", false) : ("그림 받음", true)
+        case .ballGame:
+            let best = UserDefaults.standard.integer(forKey: "ballGameBest")
+            return best > 0 ? ("최고 \(best)점", true) : ("손목으로 조종", false)
+        case .airPointer:
+            return ("허공에 그리기", false)
+        case .duel:
+            let duel = model.duel.duel
+            return duel.wins + duel.losses > 0 ? ("\(duel.wins)승 \(duel.losses)패", true) : ("워치와 겨루기", false)
+        case .radar:
+            return model.ranging.distance.map { (DistanceFormat.text(meters: $0), true) } ?? ("워치까지 거리", false)
+        case .heartRate:
+            if model.isHeartLive, let bpm = model.heart.current {
+                return ("\(Int(bpm.rounded())) BPM", true)
+            }
+            return ("워치에서 시작", false)
+        case .altitude:
+            return ("기압계로 비교", false)
+        case .impact, .rotation, .vibration, .board, .controller:
             return (feature.detail, false)
         }
     }
@@ -285,7 +319,24 @@ private struct FeatureScreen: View {
         case .battery:
             BatteryScreen(model: model)
                 .padding(.top, 24)
-        case .impact, .rotation, .vibration, .board:
+        case .buzz:
+            BuzzScreen()
+        case .mirror:
+            MirrorScreen()
+        case .ballGame:
+            BallGameScreen()
+        case .airPointer:
+            AirPointerScreen()
+        case .duel:
+            DuelScreen(model: model)
+        case .radar:
+            RadarScreen(model: model)
+                .frame(minHeight: 460)
+        case .heartRate:
+            HeartRateScreen()
+        case .altitude:
+            AltitudeScreen(model: model)
+        case .impact, .rotation, .vibration, .board, .controller:
             ContentUnavailableView("Apple Watch 전용", systemImage: "applewatch",
                                    description: Text("이 기능은 워치의 Whatch 앱에서 사용할 수 있어요."))
         }

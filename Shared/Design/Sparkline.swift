@@ -15,7 +15,8 @@ struct Sparkline: View {
 
     var body: some View {
         Chart(Array(values.enumerated()), id: \.offset) { index, value in
-            AreaMark(x: .value("Index", index), y: .value("Value", value))
+            // Fill down to the bottom of the range, not to zero, which may lie outside it.
+            AreaMark(x: .value("Index", index), yStart: .value("Base", domain.lowerBound), yEnd: .value("Value", value))
                 .foregroundStyle(LinearGradient(colors: [tint.opacity(0.45), tint.opacity(0.02)],
                                                 startPoint: .top, endPoint: .bottom))
                 .interpolationMethod(.monotone)
@@ -28,6 +29,7 @@ struct Sparkline: View {
         .chartYAxis(.hidden)
         .chartYScale(domain: domain)
         .chartLegend(.hidden)
+        .clipped()
         .accessibilityHidden(true)
     }
 

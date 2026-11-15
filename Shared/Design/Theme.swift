@@ -53,6 +53,14 @@ extension Feature {
         case .haptic: .mint
         case .heading: .cyan
         case .battery: .green
+        case .buzz: .indigo
+        case .mirror: .purple
+        case .controller, .ballGame: .blue
+        case .airPointer: .pink
+        case .duel: .orange
+        case .radar: .indigo
+        case .heartRate: .red
+        case .altitude: .brown
         }
     }
 }
@@ -134,6 +142,13 @@ private struct CardModifier: ViewModifier {
 extension View {
     func card() -> some View {
         modifier(CardModifier())
+    }
+
+    /// While this view is showing, asks the other device to show `feature`'s screen.
+    @MainActor
+    func opensOnCounterpart(_ feature: Feature, model: AppModel) -> some View {
+        onAppear { model.requestOpen(feature) }
+            .onDisappear { model.cancelOpenRequest(feature) }
     }
 }
 

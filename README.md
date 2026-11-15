@@ -14,16 +14,31 @@ It was originally created out of curiosity and is now shared as an open-source p
 - **Vibration Detector** — a live trace of how much your wrist is shaking.
 - **Watch Board** — a pixel canvas you draw on with a finger or steer with the Digital Crown.
 
-**With the iPhone**
+**Remote control**
+
+- **Flashlight** — switch the iPhone torch from the Watch and set its brightness with the Digital Crown.
+- **Haptic Controller** — start and stop the iPhone vibration from the Watch.
+- **Buzz the Watch** — send taps and Morse code from the iPhone to the Watch's Taptic Engine.
+- **Watch Board Mirroring** — see the Watch drawing live on the iPhone, then save or share it.
+
+**Play**
+
+- **Ball Game** — tilt your wrist to roll a ball on the iPhone onto the target.
+- **Air Pointer** — point your arm to move a pointer on the iPhone; hold the pad on the Watch to draw.
+- **Reaction Duel** — one player per device; first to tap after "go" wins.
+
+**Measure**
 
 - **Ping Test** — round-trip time between the two apps, with a history chart.
-- **Flashlight** — switch the iPhone torch from the Watch; brightness and hold/toggle on the phone.
-- **Haptic Controller** — start and stop the iPhone vibration from the Watch.
 - **Heading Monitor** — a compass showing where the other device points.
 - **Battery** — both battery levels side by side.
+- **Distance Radar** — distance between the devices with ultra-wideband (iPhone 11 and Apple Watch Series 6 or later).
+- **Heart Rate Relay** — the Watch's live heart rate on the iPhone's big screen. Nothing is saved to Health.
+- **Height Difference** — compares the two barometers to tell how much higher one device is.
 
-The torch and the vibration motor only work while the iPhone app is on screen (an iOS rule).
-When something cannot work, the app says why instead of failing silently.
+Opening a feature on one device opens its partner screen on the other. The torch and the vibration motor
+only work while the iPhone app is on screen (an iOS rule), and anything sent from the iPhone needs the Watch
+app in front. When something cannot work, the app says why instead of failing silently.
 
 ---
 
@@ -41,7 +56,9 @@ Two app targets share one folder of code:
 
 Each device broadcasts a `DeviceState` snapshot when it changes and stores it for the other to find later, so
 a screen can show the last known value even when the other app is closed. High-rate data (the compass) is only
-streamed while the other device has the heading screen open.
+streamed while the other device has the heading screen open. The same goes for wrist motion, the Watch Board and
+pressure: each is a stream the other device subscribes to, sent one message at a time and only when the previous
+one was acknowledged, so a slow link gets fewer, fresher messages instead of a growing queue.
 
 ---
 

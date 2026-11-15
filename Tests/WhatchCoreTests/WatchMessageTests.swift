@@ -24,6 +24,23 @@ final class WatchMessageTests: XCTestCase {
             .state(state),
             .state(DeviceState(timestamp: 1)),
             .stateRequest,
+            .subscribe(.board, isOn: true),
+            .subscribe(.motion, isOn: false),
+            .subscribe(.pressure, isOn: true),
+            .open(.controller),
+            .setFlashlightBrightness(0.35),
+            .board(Board().data),
+            .buzz("... --- .../.-"),
+            .controller(ControllerSample(tiltX: 0.25, tiltY: -0.5, yaw: 170.5, roll: -12, isPressed: true)),
+            .controller(ControllerSample()),
+            .duelStart(round: 421_337, delay: 3.25),
+            .duelResult(round: 421_337, milliseconds: 287),
+            .duelResult(round: 421_337, milliseconds: ReactionDuel.falseStart),
+            .rangingOffer(Data([1, 2, 3, 250])),
+            .rangingAnswer(Data([9, 8])),
+            .heartRate(72.5),
+            .heartRate(0),
+            .pressure(101.287),
         ]
         for message in messages {
             XCTAssertEqual(try roundTrip(message), message)
@@ -39,6 +56,23 @@ final class WatchMessageTests: XCTestCase {
     func testPayloadIsAPropertyList() {
         let payload = WatchMessage.state(DeviceState(batteryLevel: 0.5, timestamp: 1)).payload
         XCTAssertTrue(PropertyListSerialization.propertyList(payload, isValidFor: .binary))
+    }
+
+    func testBrightnessTravelsWithTheState() throws {
+        let decoded = try roundTrip(.state(DeviceState(flashlightBrightness: 0.4, timestamp: 9)))
+        guard case .state(let state) = decoded else { return XCTFail("expected state") }
+        XCTAssertEqual(state.flashlightBrightness, 0.4, accuracy: 1e-9)
+        // A state from the previous app version has no brightness; assume full.
+        let old = DeviceState(payload: ["timestamp": 1.0])
+        XCTAssertEqual(old?.flashlightBrightness, 1)
+    }
+
+    func testMalformedNewMessagesAreRejected() {
+        XCTAssertNil(WatchMessage(payload: ["kind": "subscribe", "value": ["stream": "gossip", "on": true]]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "open", "value": "teleporter"]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "controller", "value": [1.0, 2.0]]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "board", "value": "not data"]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "duelResult", "value": ["round": 1]]))
     }
 
     func testGarbageIsRejected() {

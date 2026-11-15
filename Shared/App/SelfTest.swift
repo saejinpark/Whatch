@@ -73,6 +73,8 @@ enum SelfTest {
             skip("remote heading", "\(Device.counterpartName) app is not on screen")
         }
 
+        await checkStreams(model, counterpartOnScreen: remote?.isForeground == true)
+
         #if os(watchOS)
         // Drive the iPhone torch for real if its app is on screen; otherwise expect a refusal.
         guard let remote else { return }
@@ -90,6 +92,55 @@ enum SelfTest {
             report("remote refusal", answered && !model.isRemoteFlashlightOn && model.link == .needsForeground,
                    answered ? "iPhone app is in the background and said so" : "iPhone did not answer")
         }
+        #endif
+    }
+
+    /// The streams and commands behind the newer features.
+    private static func checkStreams(_ model: AppModel, counterpartOnScreen: Bool) async {
+        #if os(watchOS)
+        // The iPhone stores a brightness even while its app is in the background.
+        let original = model.remoteFlashlightBrightness
+        let target = original > 0.6 ? 0.4 : 0.8
+        model.setRemoteFlashlightBrightness(target)
+        let applied = await wait(seconds: 8) { abs(model.remoteFlashlightBrightness - target) < 0.01 ? true : nil } != nil
+        report("remote brightness", applied,
+               applied ? "iPhone set its torch to \(Int(target * 100))%" : "iPhone did not confirm")
+        model.setRemoteFlashlightBrightness(original)
+        #endif
+
+        guard counterpartOnScreen else {
+            return skip("streams", "\(Device.counterpartName) app is not on screen")
+        }
+
+        model.setAltitudeVisible(true)
+        let height = await wait(seconds: 10) { model.height.meters }
+        report("pressure exchange", height != nil,
+               height.map { "height difference \(DistanceFormat.text(meters: $0))" } ?? "no pressure from both barometers")
+        model.setAltitudeVisible(false)
+
+        if RangingService.isSupported {
+            model.ranging.start()
+            let distance = await wait(seconds: 12) { model.ranging.distance }
+            report("ranging", distance != nil,
+                   distance.map { "\(Device.counterpartName) is \(DistanceFormat.text(meters: $0)) away" } ?? "no distance (\(model.ranging.status))")
+            model.ranging.stop()
+        } else {
+            skip("ranging", "no ultra-wideband on this device")
+        }
+
+        #if os(iOS)
+        model.setWanted(.board, true)
+        let board = await wait(seconds: 8) { model.mirroredBoard }
+        report("board mirror", board != nil, board.map { "\($0.columns)x\($0.rows) board received" } ?? "no board")
+        model.setWanted(.board, false)
+
+        model.setWanted(.motion, true)
+        let sample = await wait(seconds: 8) { model.controllerSample }
+        report("controller stream", sample != nil,
+               sample.map { String(format: "tilt %.2f, %.2f", $0.tiltX, $0.tiltY) } ?? "no sample")
+        model.setWanted(.motion, false)
+
+        report("buzz", model.sendBuzz(".-"), "sent a dot and a dash to the Watch")
         #endif
     }
 
