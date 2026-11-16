@@ -129,7 +129,7 @@ enum Feature: String, CaseIterable, Identifiable, Sendable {
         case .ping: "두 기기 사이의 응답 속도"
         case .heading: "두 기기가 향한 방향 비교"
         case .battery: "두 기기의 배터리 잔량"
-        case .radar: "두 기기 사이 거리 재기"
+        case .radar: "거리와 길이, 키 재기"
         case .heartRate: "워치 심박을 아이폰에 실시간으로"
         case .altitude: "기압계로 두 기기 높이 비교"
         }

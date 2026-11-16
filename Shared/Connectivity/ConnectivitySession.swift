@@ -80,7 +80,8 @@ final class ConnectivitySession: NSObject {
     /// WatchConnectivity does not always report a change in reachability, notably after the app
     /// was suspended, so the mirrored values are also checked whenever it matters.
     func refresh() {
-        guard let session else { return }
+        // Before activation the session has nothing to report and complains about being asked.
+        guard let session, session.activationState == .activated else { return }
         apply(Snapshot(session))
     }
 

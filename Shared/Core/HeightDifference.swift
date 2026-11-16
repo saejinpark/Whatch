@@ -74,4 +74,9 @@ enum DistanceFormat {
         }
         return String(format: "%.2f m", distance)
     }
+
+    /// A person's height: always whole centimetres, "172 cm".
+    static func height(meters: Double) -> String {
+        "\(Int((abs(meters) * 100).rounded())) cm"
+    }
 }

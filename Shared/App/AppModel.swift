@@ -41,6 +41,10 @@ final class AppModel {
     var pendingOpen: Feature?
     /// The two barometers compared, while the height screen is open on either device.
     private(set) var height = HeightDifference()
+    #if os(iOS)
+    /// This iPhone's calibration for estimating height from arm span, shared with the Watch.
+    private(set) var calibratedArmSpanOffset = UserDefaults.standard.object(forKey: AppModel.armSpanKey) as? Double
+    #endif
 
     /// This device's heading screen is open.
     @ObservationIgnored private var isHeadingVisible = false
@@ -182,6 +186,46 @@ final class AppModel {
         height.calibrate()
     }
 
+    // MARK: Arm span
+
+    private static let armSpanKey = "armSpanOffset"
+
+    /// What to add to a measured arm span to get a height. The iPhone keeps the calibration; the Watch follows it.
+    var armSpanOffset: Double {
+        #if os(iOS)
+        calibratedArmSpanOffset ?? ArmSpan.defaultOffset
+        #else
+        remote?.armSpanOffset ?? ArmSpan.defaultOffset
+        #endif
+    }
+
+    var isArmSpanCalibrated: Bool {
+        #if os(iOS)
+        calibratedArmSpanOffset != nil
+        #else
+        remote?.armSpanOffset != nil
+        #endif
+    }
+
+    #if os(iOS)
+    /// Calibrates with someone whose height is known and whose arm span was just measured as `distance`.
+    /// Returns `false` when the two cannot belong to the same person.
+    @discardableResult
+    func calibrateArmSpan(height: Double, distance: Double) -> Bool {
+        guard let offset = ArmSpan.offset(height: height, distance: distance) else { return false }
+        calibratedArmSpanOffset = offset
+        UserDefaults.standard.set(offset, forKey: Self.armSpanKey)
+        broadcastState()
+        return true
+    }
+
+    func resetArmSpan() {
+        calibratedArmSpanOffset = nil
+        UserDefaults.standard.removeObject(forKey: Self.armSpanKey)
+        broadcastState()
+    }
+    #endif
+
     private func resubscribe() {
         if isHeadingVisible {
             session.send(.headingSubscription(isOn: true))
@@ -192,6 +236,7 @@ final class AppModel {
         if let openRequest {
             session.send(.open(openRequest))
         }
+        ranging.announce()
     }
 
     private func updateHeadingMonitor() {
@@ -254,6 +299,7 @@ final class AppModel {
         state.isFlashlightOn = flashlight.isOn
         state.isHapticOn = haptic.isPlaying
         state.flashlightBrightness = flashlight.brightness
+        state.armSpanOffset = calibratedArmSpanOffset
         #endif
         return state
     }
@@ -436,7 +482,8 @@ final class AppModel {
     }
 
     private func attemptSync() {
-        guard let ticket = sync.begin(now: Date()) else { return }
+        // Nothing can be delivered yet; the keeper comes back here once the link is up.
+        guard session.isReachable, let ticket = sync.begin(now: Date()) else { return }
         Log.connectivity.debug("Greeting sent")
         session.sendAcknowledged(.state(localState)) { [weak self] delivered in
             guard let self, sync.finish(ticket, delivered: delivered) else { return }
@@ -613,9 +660,9 @@ final class AppModel {
             replyTimedOut = false
             #endif
         } else if !isRemoteLive {
-            // Restored from storage: only the battery reading can be trusted.
+            // Restored from storage: only what does not go stale can be trusted.
             remote = DeviceState(batteryLevel: state.batteryLevel, isCharging: state.isCharging,
-                                 timestamp: state.timestamp)
+                                 timestamp: state.timestamp, armSpanOffset: state.armSpanOffset)
         }
     }
 }

@@ -32,6 +32,8 @@ final class RangingService: NSObject {
     private(set) var bearing: Double?
     /// Whether the radar screen is open on this device.
     private(set) var isStarted = false
+    /// How many distance readings have arrived, so a reader can tell a new one from a repeat of the same value.
+    @ObservationIgnored private(set) var readingCount = 0
 
     /// Called with this device's token; `isAnswer` is `false` when the other device should reply.
     @ObservationIgnored var sendToken: ((_ token: Data, _ isAnswer: Bool) -> Void)?
@@ -75,6 +77,13 @@ final class RangingService: NSObject {
         distance = nil
         bearing = nil
         status = .idle
+    }
+
+    /// The link to the other device came back while this radar is still looking for it: offer again,
+    /// since the first offer may never have arrived.
+    func announce() {
+        guard isStarted, status == .searching else { return }
+        sendOwnToken(isAnswer: false)
     }
 
     /// The other device's token arrived.
@@ -131,6 +140,9 @@ final class RangingService: NSObject {
         guard isStarted else { return }
         self.distance = distance.map(Double.init)
         self.bearing = bearing
+        if distance != nil {
+            readingCount += 1
+        }
         status = distance == nil ? .searching : .ranging
     }
 
@@ -161,7 +173,8 @@ final class RangingService: NSObject {
         }
     }
 
-    /// Simulators have no ultra-wideband radio; wander so the screens can be checked.
+    /// Simulators have no ultra-wideband radio; wander between two resting places so the screens,
+    /// and a measurement that waits for the devices to hold still, can be checked.
     private func startSimulation() {
         simulation?.cancel()
         simulation = Task { [weak self] in
@@ -172,7 +185,8 @@ final class RangingService: NSObject {
                 #else
                 let bearing: Double? = nil
                 #endif
-                self.update(distance: Float(1.3 + 0.9 * sin(time / 2.5)), bearing: bearing)
+                let swing = min(max(1.6 * sin(time / 2.5), -1), 1)
+                self.update(distance: Float(1.3 + 0.9 * swing), bearing: bearing)
                 time += 0.2
                 try? await Task.sleep(for: .milliseconds(200))
             }

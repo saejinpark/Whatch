@@ -32,7 +32,7 @@ It was originally created out of curiosity and is now shared as an open-source p
 - **Ping Test** — round-trip time between the two apps, with a history chart.
 - **Heading Monitor** — a compass showing where the other device points.
 - **Battery** — both battery levels side by side.
-- **Distance Radar** — distance between the devices with ultra-wideband (iPhone 11 and Apple Watch Series 6 or later).
+- **Distance Radar** — distance between the devices with ultra-wideband (iPhone 11 and Apple Watch Series 6 or later). It also measures a length held between the two, and estimates height from arm span; both wait for the devices to hold still and are good to about 10 cm.
 - **Heart Rate Relay** — the Watch's live heart rate on the iPhone's big screen. Nothing is saved to Health.
 - **Height Difference** — compares the two barometers to tell how much higher one device is.
 

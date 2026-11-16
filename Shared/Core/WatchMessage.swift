@@ -18,6 +18,8 @@ struct DeviceState: Equatable, Sendable {
     var isForeground = false
     /// When the snapshot was taken, in seconds since 1970.
     var timestamp: TimeInterval = 0
+    /// The iPhone's calibration for estimating height from arm span, in metres. `nil` until someone calibrates.
+    var armSpanOffset: Double?
 
     private enum Key {
         static let battery = "battery"
@@ -27,6 +29,7 @@ struct DeviceState: Equatable, Sendable {
         static let brightness = "brightness"
         static let foreground = "foreground"
         static let timestamp = "timestamp"
+        static let armSpan = "armSpan"
     }
 
     init(
@@ -36,7 +39,8 @@ struct DeviceState: Equatable, Sendable {
         isHapticOn: Bool = false,
         flashlightBrightness: Double = 1,
         isForeground: Bool = false,
-        timestamp: TimeInterval = 0
+        timestamp: TimeInterval = 0,
+        armSpanOffset: Double? = nil
     ) {
         self.batteryLevel = batteryLevel
         self.isCharging = isCharging
@@ -45,6 +49,7 @@ struct DeviceState: Equatable, Sendable {
         self.flashlightBrightness = flashlightBrightness
         self.isForeground = isForeground
         self.timestamp = timestamp
+        self.armSpanOffset = armSpanOffset
     }
 
     var payload: [String: Any] {
@@ -59,6 +64,9 @@ struct DeviceState: Equatable, Sendable {
         if let batteryLevel {
             payload[Key.battery] = batteryLevel
         }
+        if let armSpanOffset {
+            payload[Key.armSpan] = armSpanOffset
+        }
         return payload
     }
 
@@ -71,6 +79,7 @@ struct DeviceState: Equatable, Sendable {
         isHapticOn = (payload[Key.haptic] as? NSNumber)?.boolValue ?? false
         flashlightBrightness = (payload[Key.brightness] as? NSNumber)?.doubleValue ?? 1
         isForeground = (payload[Key.foreground] as? NSNumber)?.boolValue ?? false
+        armSpanOffset = (payload[Key.armSpan] as? NSNumber)?.doubleValue
     }
 }
 

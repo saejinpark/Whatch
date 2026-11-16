@@ -340,3 +340,129 @@ final class LinkSyncTests: XCTestCase {
         XCTAssertFalse(sync.finish(first, delivered: true))
     }
 }
+
+final class SteadyDistanceTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 2_000)
+
+    /// Feeds one reading every `step` seconds, beginning `from` seconds after the start.
+    private func feed(_ measure: inout SteadyDistance, _ values: [Double], from: TimeInterval, step: TimeInterval = 0.25) {
+        for (index, value) in values.enumerated() {
+            measure.add(value, now: start.addingTimeInterval(from + Double(index) * step))
+        }
+    }
+
+    func testCountsDownWhileGettingIntoPosition() {
+        var measure = SteadyDistance()
+        XCTAssertFalse(measure.isRunning)
+        measure.start(now: start)
+        XCTAssertEqual(measure.phase, .preparing)
+        XCTAssertEqual(measure.countdown(now: start), 3)
+        XCTAssertEqual(measure.countdown(now: start.addingTimeInterval(1.2)), 2)
+        XCTAssertEqual(measure.countdown(now: start.addingTimeInterval(2.9)), 1)
+        measure.tick(now: start.addingTimeInterval(3))
+        XCTAssertEqual(measure.phase, .measuring)
+        XCTAssertEqual(measure.countdown(now: start.addingTimeInterval(3)), 0)
+    }
+
+    func testReadingsWhileGettingIntoPositionAreIgnored() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        feed(&measure, Array(repeating: 0.5, count: 10), from: 0)
+        XCTAssertEqual(measure.phase, .preparing)
+        // The arms are now out; only these readings may count.
+        feed(&measure, Array(repeating: 1.6, count: 8), from: 3)
+        XCTAssertEqual(measure.phase, .done(.init(meters: 1.6, isSteady: true)))
+    }
+
+    func testWaitsUntilTheReadingsSettle() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        feed(&measure, [0.9, 1.1, 1.3, 1.5, 1.6, 1.7], from: 3)
+        XCTAssertEqual(measure.phase, .measuring)
+        feed(&measure, [1.70, 1.72, 1.71, 1.70, 1.72, 1.71, 1.70, 1.71, 1.72], from: 4.5)
+        guard case .done(let result) = measure.phase else { return XCTFail("still \(measure.phase)") }
+        XCTAssertTrue(result.isSteady)
+        XCTAssertEqual(result.meters, 1.71, accuracy: 0.011)
+    }
+
+    func testAFewQuickReadingsAreNotEnough() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        // Identical, but they cover only half a second.
+        feed(&measure, [1.5, 1.5, 1.5], from: 3)
+        XCTAssertEqual(measure.phase, .measuring)
+    }
+
+    func testOneStrayReadingDoesNotMoveTheResult() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        feed(&measure, [1.50, 1.51, 1.50, 1.55, 1.50, 1.51, 1.50, 1.50], from: 3)
+        guard case .done(let result) = measure.phase else { return XCTFail("still \(measure.phase)") }
+        XCTAssertEqual(result.meters, 1.5, accuracy: 0.011)
+    }
+
+    func testAnswersRoughlyWhenTheReadingsNeverSettle() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        let wobbling = (0..<60).map { 1.5 + ($0.isMultiple(of: 2) ? 0.1 : -0.1) }
+        feed(&measure, wobbling, from: 3)
+        guard case .done(let result) = measure.phase else { return XCTFail("still \(measure.phase)") }
+        XCTAssertFalse(result.isSteady)
+        XCTAssertEqual(result.meters, 1.5, accuracy: 0.11)
+        XCTAssertFalse(measure.isRunning)
+    }
+
+    func testFailsWhenNoReadingArrives() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        measure.tick(now: start.addingTimeInterval(5))
+        XCTAssertEqual(measure.phase, .measuring)
+        measure.tick(now: start.addingTimeInterval(SteadyDistance.preparation + SteadyDistance.timeout))
+        XCTAssertEqual(measure.phase, .failed)
+    }
+
+    func testResetAndStartAgain() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        feed(&measure, Array(repeating: 2.0, count: 8), from: 3)
+        measure.reset()
+        XCTAssertEqual(measure.phase, .idle)
+        let later = start.addingTimeInterval(60)
+        measure.start(now: later)
+        XCTAssertEqual(measure.countdown(now: later), 3)
+        measure.tick(now: later.addingTimeInterval(4))
+        // Nothing from the first run may leak into the second.
+        XCTAssertEqual(measure.phase, .measuring)
+    }
+}
+
+final class ArmSpanTests: XCTestCase {
+    func testDefaultOffsetCoversTheHands() {
+        XCTAssertEqual(ArmSpan.height(distance: 1.45, offset: ArmSpan.defaultOffset), 1.72, accuracy: 1e-9)
+    }
+
+    func testCalibrationReproducesTheKnownHeight() throws {
+        let offset = try XCTUnwrap(ArmSpan.offset(height: 1.80, distance: 1.49))
+        XCTAssertEqual(ArmSpan.height(distance: 1.49, offset: offset), 1.80, accuracy: 1e-9)
+        // Someone else measured with the same calibration.
+        XCTAssertEqual(ArmSpan.height(distance: 1.35, offset: offset), 1.66, accuracy: 1e-9)
+    }
+
+    func testImplausibleCalibrationIsRefused() {
+        // The arms were not out, or the height was mistyped.
+        XCTAssertNil(ArmSpan.offset(height: 1.75, distance: 0.6))
+        XCTAssertNil(ArmSpan.offset(height: 1.20, distance: 1.6))
+    }
+
+    func testHeightIsShownInWholeCentimetres() {
+        XCTAssertEqual(DistanceFormat.height(meters: 1.724), "172 cm")
+        XCTAssertEqual(DistanceFormat.height(meters: 0.98), "98 cm")
+    }
+
+    func testCalibrationTravelsWithTheState() throws {
+        let sent = DeviceState(timestamp: 3, armSpanOffset: 0.31)
+        let received = try XCTUnwrap(DeviceState(payload: sent.payload))
+        XCTAssertEqual(try XCTUnwrap(received.armSpanOffset), 0.31, accuracy: 1e-9)
+        XCTAssertNil(DeviceState(payload: DeviceState(timestamp: 3).payload)?.armSpanOffset)
+    }
+}
