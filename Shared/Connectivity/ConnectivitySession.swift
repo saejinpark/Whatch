@@ -75,7 +75,20 @@ final class ConnectivitySession: NSObject {
         }
     }
 
+    /// Re-reads the session's facts.
+    ///
+    /// WatchConnectivity does not always report a change in reachability, notably after the app
+    /// was suspended, so the mirrored values are also checked whenever it matters.
+    func refresh() {
+        guard let session else { return }
+        apply(Snapshot(session))
+    }
+
     private func receive(_ message: WatchMessage, isLive: Bool) {
+        if isLive, !isReachable {
+            // A message just arrived, so whatever we believed about the link is out of date.
+            refresh()
+        }
         if case .ping(let sentAt) = message {
             send(.pong(sentAt: sentAt))
             return

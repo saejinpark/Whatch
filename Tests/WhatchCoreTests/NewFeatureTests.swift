@@ -282,3 +282,61 @@ final class HeightDifferenceTests: XCTestCase {
         XCTAssertEqual(DistanceFormat.text(meters: 1.236), "1.24 m")
     }
 }
+
+final class LinkSyncTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 1_000)
+
+    func testNothingIsSentUntilRequested() {
+        var sync = LinkSync()
+        XCTAssertNil(sync.begin(now: start))
+        XCTAssertFalse(sync.isPending)
+    }
+
+    func testDeliveredAttemptSettlesTheRequest() throws {
+        var sync = LinkSync()
+        sync.request()
+        let ticket = try XCTUnwrap(sync.begin(now: start))
+        XCTAssertTrue(sync.finish(ticket, delivered: true))
+        XCTAssertFalse(sync.isPending)
+        XCTAssertNil(sync.begin(now: start.addingTimeInterval(10)))
+    }
+
+    func testFailedAttemptIsRetriedAtOnce() throws {
+        var sync = LinkSync()
+        sync.request()
+        let first = try XCTUnwrap(sync.begin(now: start))
+        XCTAssertFalse(sync.finish(first, delivered: false))
+        XCTAssertTrue(sync.isPending)
+        XCTAssertNotNil(sync.begin(now: start.addingTimeInterval(0.1)))
+    }
+
+    func testOnlyOneAttemptIsInFlightUntilItStalls() {
+        var sync = LinkSync()
+        sync.request()
+        XCTAssertNotNil(sync.begin(now: start))
+        XCTAssertNil(sync.begin(now: start.addingTimeInterval(1)))
+        XCTAssertNotNil(sync.begin(now: start.addingTimeInterval(LinkSync.stallTimeout)))
+    }
+
+    func testAnOvertakenAttemptDoesNotSettleTheNewerRequest() throws {
+        var sync = LinkSync()
+        sync.request()
+        let stale = try XCTUnwrap(sync.begin(now: start))
+        sync.request()
+        // A new request goes out immediately, without waiting for the old attempt.
+        let fresh = try XCTUnwrap(sync.begin(now: start.addingTimeInterval(0.1)))
+        XCTAssertFalse(sync.finish(stale, delivered: true))
+        XCTAssertTrue(sync.isPending)
+        XCTAssertTrue(sync.finish(fresh, delivered: true))
+        XCTAssertFalse(sync.isPending)
+    }
+
+    func testALateAnswerAfterSettlingIsIgnored() throws {
+        var sync = LinkSync()
+        sync.request()
+        let first = try XCTUnwrap(sync.begin(now: start))
+        let second = try XCTUnwrap(sync.begin(now: start.addingTimeInterval(LinkSync.stallTimeout)))
+        XCTAssertTrue(sync.finish(second, delivered: true))
+        XCTAssertFalse(sync.finish(first, delivered: true))
+    }
+}

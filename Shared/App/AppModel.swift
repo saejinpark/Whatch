@@ -54,6 +54,9 @@ final class AppModel {
     @ObservationIgnored private var requested: Set<LiveStream> = []
     /// A screen an open screen here wants the counterpart to show.
     @ObservationIgnored private var openRequest: Feature?
+    /// Whether the counterpart has confirmed hearing where this device stands.
+    @ObservationIgnored private var sync = LinkSync()
+    @ObservationIgnored private var linkKeeper: Task<Void, Never>?
 
     #if os(iOS)
     /// The Watch Board as last sent by the Watch.
@@ -95,9 +98,10 @@ final class AppModel {
         battery.start()
         updateHeadingMonitor()
         updateAltimeter()
-        broadcastState()
-        session.send(.stateRequest)
-        resubscribe()
+        // The link is often not up yet at this instant; the keeper repeats this until it lands.
+        session.refresh()
+        requestSync()
+        startLinkKeeper()
         #if os(watchOS)
         updateControllerStream()
         #endif
@@ -106,6 +110,8 @@ final class AppModel {
     /// Call when the app leaves the screen.
     func deactivate() {
         isForeground = false
+        linkKeeper?.cancel()
+        linkKeeper = nil
         #if os(iOS)
         // iOS switches both off in the background anyway; keep our state, and the Watch, honest.
         flashlight.setOn(false)
@@ -418,11 +424,47 @@ final class AppModel {
         #endif
     }
 
-    private func reachabilityChanged(_ reachable: Bool) {
-        if reachable {
-            broadcastState()
-            session.send(.stateRequest)
+    /// Tells the counterpart where this device stands and what it wants, and keeps trying until it hears.
+    private func requestSync() {
+        sync.request()
+        battery.refresh()
+        session.publish(localState)
+        // Coming on screen and the link coming up often land together; after this hop they share one greeting.
+        Task { [weak self] in
+            self?.attemptSync()
+        }
+    }
+
+    private func attemptSync() {
+        guard let ticket = sync.begin(now: Date()) else { return }
+        Log.connectivity.debug("Greeting sent")
+        session.sendAcknowledged(.state(localState)) { [weak self] delivered in
+            guard let self, sync.finish(ticket, delivered: delivered) else { return }
+            // The link is proven to work right now, so ask for everything we want from the counterpart.
             resubscribe()
+            session.sendAcknowledged(.stateRequest) { [weak self] delivered in
+                if !delivered { self?.requestSync() }
+            }
+        }
+    }
+
+    /// While this app is on screen, notices a link that came back unannounced and finishes any greeting still owed.
+    private func startLinkKeeper() {
+        guard linkKeeper == nil else { return }
+        linkKeeper = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self else { return }
+                session.refresh()
+                attemptSync()
+            }
+        }
+    }
+
+    private func reachabilityChanged(_ reachable: Bool) {
+        Log.connectivity.debug("Reachable \(reachable, privacy: .public)")
+        if reachable {
+            requestSync()
         } else {
             // Keep the last battery reading, but nothing about the counterpart is current any more.
             isRemoteLive = false
@@ -557,10 +599,14 @@ final class AppModel {
 
     private func receive(_ state: DeviceState, isLive: Bool) {
         if isLive {
+            let wasPresent = isRemoteLive && remote?.isForeground == true
             remote = state
             isRemoteLive = true
             if !state.isForeground {
                 counterpartWentAway()
+            } else if !wasPresent {
+                // It is back on screen and has forgotten what we asked of it.
+                resubscribe()
             }
             #if os(watchOS)
             replyTimeout?.cancel()
