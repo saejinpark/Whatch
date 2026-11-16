@@ -20,6 +20,7 @@ final class AppModel {
     let altimeter = AltimeterService()
     let ranging = RangingService()
     let duel = DuelController()
+    let measure: MeasureController
     let ping: PingMonitor
     #if os(iOS)
     let flashlight = FlashlightController()
@@ -61,6 +62,7 @@ final class AppModel {
     /// Whether the counterpart has confirmed hearing where this device stands.
     @ObservationIgnored private var sync = LinkSync()
     @ObservationIgnored private var linkKeeper: Task<Void, Never>?
+    @ObservationIgnored private lazy var distanceSender = LatestSender(session: session, minimumInterval: 0.2)
 
     #if os(iOS)
     /// The Watch Board as last sent by the Watch.
@@ -91,6 +93,7 @@ final class AppModel {
 
     init() {
         ping = PingMonitor(session: session)
+        measure = MeasureController(ranging: ranging)
         wire()
     }
 
@@ -453,7 +456,13 @@ final class AppModel {
         ranging.sendToken = { [weak self] token, isAnswer in
             self?.session.send(isAnswer ? .rangingAnswer(token) : .rangingOffer(token))
         }
+        ranging.onReading = { [weak self] meters in
+            self?.distanceSender.offer(.rangingDistance(meters))
+        }
         duel.send = { [weak self] message in
+            self?.session.send(message)
+        }
+        measure.send = { [weak self] message in
             self?.session.send(message)
         }
         #if os(iOS)
@@ -521,7 +530,7 @@ final class AppModel {
 
     private func handle(_ message: WatchMessage, isLive: Bool) {
         switch message {
-        case .controller, .heading, .pressure, .board, .ping, .pong:
+        case .controller, .heading, .pressure, .board, .ping, .pong, .rangingDistance:
             break // Too frequent or too large to log.
         default:
             Log.connectivity.debug("Received \(String(describing: message), privacy: .public)")
@@ -576,6 +585,14 @@ final class AppModel {
             ranging.receive(token: token, isAnswer: false)
         case .rangingAnswer(let token):
             ranging.receive(token: token, isAnswer: true)
+        case .rangingDistance(let meters):
+            ranging.receive(peerDistance: meters)
+        case .measureStart(let kind, let id):
+            measure.receiveStart(kind, id: id)
+        case .measureResult(let id, let meters, let isSteady):
+            measure.receiveResult(id: id, meters: meters, isSteady: isSteady)
+        case .measureStop(let id):
+            measure.receiveStop(id: id)
 
         case .setFlashlight(let isOn):
             #if os(iOS)

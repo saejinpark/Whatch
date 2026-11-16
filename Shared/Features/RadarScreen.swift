@@ -10,21 +10,11 @@ import SwiftUI
 struct RadarScreen: View {
     let model: AppModel
 
-    /// What a measurement is for.
-    private enum Kind: String {
-        case length
-        case height
-    }
-
     /// `-measure length` or `-measure height` on the command line starts that measurement as soon
     /// as the radar has a reading, so the flow can be checked without anyone tapping.
-    private static let requestedKind = UserDefaults.standard.string(forKey: "measure").flatMap(Kind.init(rawValue:))
+    private static let requestedKind = UserDefaults.standard.string(forKey: "measure").flatMap(MeasureKind.init(rawValue:))
     @State private var didAutoStart = false
 
-    @State private var measure = SteadyDistance()
-    @State private var kind = Kind.length
-    /// The time of the latest tick, so the countdown redraws.
-    @State private var now = Date()
     #if os(iOS)
     @State private var isCalibrating = false
     @State private var knownHeight = 170
@@ -33,6 +23,7 @@ struct RadarScreen: View {
 
     var body: some View {
         let ranging = model.ranging
+        let measure = model.measure.measure
 
         VStack(spacing: Layout.spacing) {
             if measure.phase == .idle {
@@ -43,18 +34,21 @@ struct RadarScreen: View {
         }
         .animation(.default, value: measure.phase)
         .onAppear { ranging.start() }
-        .onDisappear { ranging.stop() }
-        .task(id: measure.isRunning) {
-            await run()
+        .onDisappear {
+            model.measure.stop()
+            ranging.stop()
         }
-        .onChange(of: measure.phase) { old, new in
-            signal(from: old, to: new)
-        }
-        // A measurement in progress means nothing without readings.
-        .onChange(of: ranging.status, initial: true) { _, status in
-            if status != .ranging, measure.isRunning {
-                measure.reset()
+        #if os(iOS)
+        // A measurement the Watch started must not open on a calibration left over from the last one.
+        .onChange(of: measure.isRunning) { _, isRunning in
+            if isRunning {
+                isCalibrating = false
+                calibrationNote = nil
             }
+        }
+        #endif
+        .onChange(of: ranging.status, initial: true) { _, status in
+            model.measure.rangingChanged()
             if status == .ranging, !didAutoStart, let kind = Self.requestedKind {
                 didAutoStart = true
                 begin(kind)
@@ -83,6 +77,15 @@ struct RadarScreen: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
         }
+        #if !os(watchOS)
+        // The two devices each read the distance on their own; the number above is their average.
+        if let own = ranging.ownDistance, let peer = ranging.peerDistance {
+            Text("아이폰 \(DistanceFormat.text(meters: own)) · 워치 \(DistanceFormat.text(meters: peer))의 평균")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+        }
+        #endif
 
         HStack(spacing: Layout.spacing) {
             Button {
@@ -145,6 +148,9 @@ struct RadarScreen: View {
 
     // MARK: Measuring
 
+    private var measure: SteadyDistance { model.measure.measure }
+    private var kind: MeasureKind { model.measure.kind }
+
     @ViewBuilder
     private var measurement: some View {
         Spacer(minLength: 0)
@@ -152,7 +158,7 @@ struct RadarScreen: View {
         case .idle:
             EmptyView()
         case .preparing:
-            hero("\(measure.countdown(now: now))")
+            hero("\(measure.countdown(now: model.measure.now))")
             note(kind == .length ? "두 기기를 재려는 양 끝에 대세요" : "한 손에 아이폰을 쥐고 양팔을 쭉 벌리세요")
         case .measuring:
             ProgressView()
@@ -185,7 +191,7 @@ struct RadarScreen: View {
                 }
             }
             Button(role: .cancel) {
-                measure.reset()
+                model.measure.stop()
             } label: {
                 Text(measure.isRunning ? "취소" : "닫기")
                     .frame(maxWidth: .infinity)
@@ -234,7 +240,7 @@ struct RadarScreen: View {
         }
         switch kind {
         case .length:
-            return "두 기기 사이 거리 · 오차 약 ±10\u{00A0}cm"
+            return "두 기기가 잰 값의 평균 · 오차 약 ±10\u{00A0}cm"
         case .height:
             return model.isArmSpanCalibrated
                 ? "양팔 길이로 추정한 키 · 보정값 사용"
@@ -292,46 +298,8 @@ struct RadarScreen: View {
     }
     #endif
 
-    private func begin(_ kind: Kind) {
-        self.kind = kind
-        #if os(iOS)
-        isCalibrating = false
-        calibrationNote = nil
-        #endif
-        now = Date()
-        measure.start(now: now)
-    }
-
-    /// Feeds the measurement while it runs: every new reading once, and a tick in between.
-    private func run() async {
-        guard measure.isRunning else { return }
-        let ranging = model.ranging
-        var seen = ranging.readingCount
-        while !Task.isCancelled, measure.isRunning {
-            let date = Date()
-            if ranging.readingCount != seen, let distance = ranging.distance {
-                seen = ranging.readingCount
-                measure.add(distance, now: date)
-            } else {
-                measure.tick(now: date)
-            }
-            now = date
-            try? await Task.sleep(for: .milliseconds(100))
-        }
-    }
-
-    /// Whoever is measuring is not looking at the screen, so each step is felt instead.
-    private func signal(from old: SteadyDistance.Phase, to new: SteadyDistance.Phase) {
-        switch new {
-        case .measuring:
-            Haptics.play(.begin)
-        case .done(let result):
-            Haptics.play(result.isSteady ? .done : .trouble)
-        case .failed:
-            Haptics.play(.trouble)
-        case .idle, .preparing:
-            break
-        }
+    private func begin(_ kind: MeasureKind) {
+        model.measure.start(kind)
     }
 }
 

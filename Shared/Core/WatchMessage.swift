@@ -166,6 +166,14 @@ enum WatchMessage: Equatable, Sendable {
     /// A Nearby Interaction discovery token; answer with `.rangingAnswer` if ranging here too.
     case rangingOffer(Data)
     case rangingAnswer(Data)
+    /// The sender's own distance reading in metres, streamed while both radars are open.
+    case rangingDistance(Double)
+    /// Starts a measurement on both devices. A later `id` replaces an earlier one.
+    case measureStart(MeasureKind, id: Int)
+    /// The sender's answer for a measurement, for the receiver to show as well.
+    case measureResult(id: Int, meters: Double, isSteady: Bool)
+    /// The sender gave up on a measurement before it finished.
+    case measureStop(id: Int)
     /// Watch → iPhone: heart rate in beats per minute, or zero when the broadcast stops.
     case heartRate(Double)
     /// Sender's barometric pressure in kPa.
@@ -175,6 +183,7 @@ enum WatchMessage: Equatable, Sendable {
         case ping, pong, setFlashlight, setHaptic, headingSubscription, heading, state, stateRequest
         case subscribe, open, setFlashlightBrightness, board, buzz, controller
         case duelStart, duelResult, rangingOffer, rangingAnswer, heartRate, pressure
+        case rangingDistance, measureStart, measureResult, measureStop
     }
 
     private enum Key {
@@ -202,6 +211,11 @@ enum WatchMessage: Equatable, Sendable {
         case .duelResult(let round, let milliseconds): encode(.duelResult, ["round": round, "ms": milliseconds])
         case .rangingOffer(let token): encode(.rangingOffer, token)
         case .rangingAnswer(let token): encode(.rangingAnswer, token)
+        case .rangingDistance(let meters): encode(.rangingDistance, meters)
+        case .measureStart(let kind, let id): encode(.measureStart, ["what": kind.rawValue, "id": id])
+        case .measureResult(let id, let meters, let isSteady):
+            encode(.measureResult, ["id": id, "m": meters, "steady": isSteady])
+        case .measureStop(let id): encode(.measureStop, id)
         case .heartRate(let bpm): encode(.heartRate, bpm)
         case .pressure(let kPa): encode(.pressure, kPa)
         }
@@ -274,6 +288,23 @@ enum WatchMessage: Equatable, Sendable {
         case .rangingAnswer:
             guard let token = value as? Data else { return nil }
             self = .rangingAnswer(token)
+        case .rangingDistance:
+            guard let number else { return nil }
+            self = .rangingDistance(number.doubleValue)
+        case .measureStart:
+            guard let dictionary = value as? [String: Any],
+                  let kind = (dictionary["what"] as? String).flatMap(MeasureKind.init(rawValue:)),
+                  let id = dictionary["id"] as? NSNumber else { return nil }
+            self = .measureStart(kind, id: id.intValue)
+        case .measureResult:
+            guard let dictionary = value as? [String: Any],
+                  let id = dictionary["id"] as? NSNumber,
+                  let meters = dictionary["m"] as? NSNumber,
+                  let isSteady = dictionary["steady"] as? NSNumber else { return nil }
+            self = .measureResult(id: id.intValue, meters: meters.doubleValue, isSteady: isSteady.boolValue)
+        case .measureStop:
+            guard let number else { return nil }
+            self = .measureStop(id: number.intValue)
         case .heartRate:
             guard let number else { return nil }
             self = .heartRate(number.doubleValue)

@@ -436,6 +436,104 @@ final class SteadyDistanceTests: XCTestCase {
     }
 }
 
+final class SharedMeasurementTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 3_000)
+
+    func testTheOtherDevicesAnswerEndsAMeasurementStillRunning() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        measure.adopt(.init(meters: 1.5, isSteady: true))
+        XCTAssertEqual(measure.phase, .done(.init(meters: 1.5, isSteady: true)))
+
+        measure.start(now: start)
+        measure.add(1.9, now: start.addingTimeInterval(3.1))
+        XCTAssertEqual(measure.phase, .measuring)
+        measure.adopt(.init(meters: 1.5, isSteady: true))
+        XCTAssertEqual(measure.phase, .done(.init(meters: 1.5, isSteady: true)))
+    }
+
+    func testAnswersThatCrossedMeetInTheMiddleOnBothDevices() {
+        var phone = SteadyDistance()
+        var watch = SteadyDistance()
+        phone.start(now: start)
+        watch.start(now: start)
+        for index in 0..<8 {
+            let now = start.addingTimeInterval(3 + Double(index) * 0.25)
+            phone.add(1.60, now: now)
+            watch.add(1.50, now: now)
+        }
+        guard case .done(let fromPhone) = phone.phase, case .done(let fromWatch) = watch.phase else {
+            return XCTFail("both should have finished")
+        }
+        phone.adopt(fromWatch)
+        watch.adopt(fromPhone)
+        XCTAssertEqual(phone.phase, watch.phase)
+        guard case .done(let agreed) = phone.phase else { return XCTFail("still done") }
+        XCTAssertEqual(agreed.meters, 1.55, accuracy: 1e-9)
+        XCTAssertTrue(agreed.isSteady)
+    }
+
+    func testASteadyAnswerBeatsARoughOneOnBothDevices() {
+        var steady = SteadyDistance()
+        var rough = SteadyDistance()
+        steady.start(now: start)
+        rough.start(now: start)
+        steady.adopt(.init(meters: 1.5, isSteady: true))
+        rough.adopt(.init(meters: 1.8, isSteady: false))
+        steady.adopt(.init(meters: 1.8, isSteady: false))
+        rough.adopt(.init(meters: 1.5, isSteady: true))
+        XCTAssertEqual(steady.phase, .done(.init(meters: 1.5, isSteady: true)))
+        XCTAssertEqual(rough.phase, steady.phase)
+    }
+
+    func testAnAnswerRescuesAMeasurementThatHeardNothingButNotOnePutAway() {
+        var measure = SteadyDistance()
+        measure.start(now: start)
+        measure.tick(now: start.addingTimeInterval(14))
+        XCTAssertEqual(measure.phase, .failed)
+        measure.adopt(.init(meters: 0.8, isSteady: true))
+        XCTAssertEqual(measure.phase, .done(.init(meters: 0.8, isSteady: true)))
+
+        measure.reset()
+        measure.adopt(.init(meters: 0.8, isSteady: true))
+        XCTAssertEqual(measure.phase, .idle)
+    }
+
+    func testBothDevicesShowTheAverageOfTheirReadings() {
+        var phone = PairedDistance()
+        var watch = PairedDistance()
+        XCTAssertNil(phone.value(now: start))
+        phone.updateOwn(1.62)
+        watch.updateOwn(1.50)
+        // Until the other device speaks, each has only its own reading.
+        XCTAssertEqual(phone.value(now: start), 1.62)
+        phone.updatePeer(1.50, now: start)
+        watch.updatePeer(1.62, now: start)
+        XCTAssertEqual(phone.value(now: start) ?? 0, 1.56, accuracy: 1e-9)
+        XCTAssertEqual(watch.value(now: start) ?? 0, 1.56, accuracy: 1e-9)
+        XCTAssertEqual(phone.peer(now: start), 1.50)
+    }
+
+    func testAStaleReadingFromTheOtherDeviceIsDropped() {
+        var paired = PairedDistance()
+        paired.updateOwn(2.0)
+        paired.updatePeer(1.0, now: start)
+        XCTAssertEqual(paired.value(now: start.addingTimeInterval(1.4)), 1.5)
+        XCTAssertEqual(paired.value(now: start.addingTimeInterval(1.6)), 2.0)
+        XCTAssertNil(paired.peer(now: start.addingTimeInterval(1.6)))
+    }
+
+    func testTheOtherDevicesReadingAloneIsNotADistance() {
+        var paired = PairedDistance()
+        paired.updatePeer(1.0, now: start)
+        XCTAssertNil(paired.value(now: start))
+        paired.updateOwn(1.2)
+        paired.clear()
+        XCTAssertNil(paired.value(now: start))
+        XCTAssertNil(paired.peer(now: start))
+    }
+}
+
 final class ArmSpanTests: XCTestCase {
     func testDefaultOffsetCoversTheHands() {
         XCTAssertEqual(ArmSpan.height(distance: 1.45, offset: ArmSpan.defaultOffset), 1.72, accuracy: 1e-9)

@@ -38,6 +38,12 @@ final class WatchMessageTests: XCTestCase {
             .duelResult(round: 421_337, milliseconds: ReactionDuel.falseStart),
             .rangingOffer(Data([1, 2, 3, 250])),
             .rangingAnswer(Data([9, 8])),
+            .rangingDistance(1.4375),
+            .measureStart(.length, id: 1_794_000_000_123),
+            .measureStart(.height, id: 7),
+            .measureResult(id: 1_794_000_000_123, meters: 1.5625, isSteady: true),
+            .measureResult(id: 7, meters: 0.25, isSteady: false),
+            .measureStop(id: 1_794_000_000_123),
             .heartRate(72.5),
             .heartRate(0),
             .pressure(101.287),
@@ -73,6 +79,8 @@ final class WatchMessageTests: XCTestCase {
         XCTAssertNil(WatchMessage(payload: ["kind": "controller", "value": [1.0, 2.0]]))
         XCTAssertNil(WatchMessage(payload: ["kind": "board", "value": "not data"]))
         XCTAssertNil(WatchMessage(payload: ["kind": "duelResult", "value": ["round": 1]]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "measureStart", "value": ["what": "weight", "id": 1]]))
+        XCTAssertNil(WatchMessage(payload: ["kind": "measureResult", "value": ["id": 1, "m": 1.5]]))
     }
 
     func testGarbageIsRejected() {

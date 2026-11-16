@@ -70,6 +70,24 @@ struct SteadyDistance: Equatable {
         return max(0, Int((Self.preparation - now.timeIntervalSince(startedAt)).rounded(.up)))
     }
 
+    /// The other device finished this measurement, first or at the same moment. Both screens must
+    /// end on one number, so its answer replaces a measurement still running here, and two
+    /// answers that crossed on the way meet in the middle unless only one of them held still.
+    mutating func adopt(_ peer: Result) {
+        switch phase {
+        case .idle:
+            break
+        case .preparing, .measuring, .failed:
+            phase = .done(peer)
+        case .done(let own):
+            if own.isSteady == peer.isSteady {
+                phase = .done(Result(meters: (own.meters + peer.meters) / 2, isSteady: own.isSteady))
+            } else {
+                phase = .done(own.isSteady ? own : peer)
+            }
+        }
+    }
+
     /// Call for every new distance reading.
     mutating func add(_ meters: Double, now: Date) {
         tick(now: now)
@@ -110,6 +128,56 @@ struct SteadyDistance: Equatable {
         guard !sorted.isEmpty else { return nil }
         let half = sorted.count / 2
         return sorted.count.isMultiple(of: 2) ? (sorted[half - 1] + sorted[half]) / 2 : sorted[half]
+    }
+}
+
+/// What a measurement is for.
+enum MeasureKind: String, Sendable {
+    /// The distance between the two devices.
+    case length
+    /// A height, estimated from arm span.
+    case height
+}
+
+/// One distance from two devices that each measure it on their own.
+///
+/// Ultra-wideband gives each device its own estimate of how far the other is, and the two
+/// can sit several centimetres apart. Each device tells the other what it reads, and both
+/// show the average, so the two screens agree.
+struct PairedDistance: Equatable {
+    /// A reading from the other device older than this no longer describes where the devices are.
+    static let peerLifetime: TimeInterval = 1.5
+
+    /// This device's own latest reading, in metres.
+    private(set) var own: Double?
+    private var peer: Double?
+    private var peerAt = Date.distantPast
+
+    mutating func updateOwn(_ meters: Double?) {
+        own = meters
+    }
+
+    mutating func updatePeer(_ meters: Double, now: Date) {
+        peer = meters
+        peerAt = now
+    }
+
+    mutating func clear() {
+        own = nil
+        peer = nil
+        peerAt = .distantPast
+    }
+
+    /// The other device's reading, while it is fresh.
+    func peer(now: Date) -> Double? {
+        now.timeIntervalSince(peerAt) <= Self.peerLifetime ? peer : nil
+    }
+
+    /// The distance to show: the average of both readings, or this device's own while the other is silent.
+    func value(now: Date) -> Double? {
+        guard let own else { return nil }
+        guard let peer = peer(now: now) else { return own }
+        return (own + peer) / 2
     }
 }
 
